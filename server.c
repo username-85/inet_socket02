@@ -77,6 +77,7 @@ int main(void)
 			close(srv_sfd);
 			close(client_fd);
 			process_request(req_sfd);
+			close(req_sfd);
 			_exit(0);
 			break;
 		default:
@@ -97,37 +98,32 @@ void process_request(int sfd)
 	printf("server: process %d waiting for connection\n", pid);
 
 	struct sockaddr_storage client_addr;
-	while(1) {
-		socklen_t ca_size = sizeof(client_addr);
-		int client_fd = accept(sfd, (struct sockaddr *)&client_addr,
-		                       &ca_size);
-		if (client_fd == -1) {
-			perror("accept");
-			break;
-		}
-
-		char addr_str[INET6_ADDRSTRLEN + 10] = {0};
-		inet_addr_str((struct sockaddr *)&client_addr, ca_size,
-		              addr_str, sizeof(addr_str));
-		printf("server: process %d got connection from %s\n",
-		       pid, addr_str);
-
-		char buf[MAXDSIZE] = {0};
-		int numbytes = recv(client_fd, buf, MAXDSIZE - 1, 0);
-		if (numbytes == -1) {
-			perror("recv");
-			break;
-		}
-		buf[numbytes] = '\0';
-		printf("server: process %d got message from %s: %s\n",
-		       pid, addr_str, buf);
-
-		if (send(client_fd, MSG_SRV, sizeof(MSG_SRV), 0) == -1)
-			perror("send");
-
-		break;
+	socklen_t ca_size = sizeof(client_addr);
+	int client_fd = accept(sfd, (struct sockaddr *)&client_addr,
+	                       &ca_size);
+	if (client_fd == -1) {
+		perror("accept");
+		return;
 	}
-	close(sfd);
+
+	char addr_str[INET6_ADDRSTRLEN + 10] = {0};
+	inet_addr_str((struct sockaddr *)&client_addr, ca_size,
+	              addr_str, sizeof(addr_str));
+	printf("server: process %d got connection from %s\n",
+	       pid, addr_str);
+
+	char buf[MAXDSIZE] = {0};
+	int numbytes = recv(client_fd, buf, MAXDSIZE - 1, 0);
+	if (numbytes == -1) {
+		perror("recv");
+		return;
+	}
+	buf[numbytes] = '\0';
+	printf("server: process %d got message from %s: %s\n",
+	       pid, addr_str, buf);
+
+	if (send(client_fd, MSG_SRV, sizeof(MSG_SRV), 0) == -1)
+		perror("send");
 }
 
 void sigchld_handler(int unused)
