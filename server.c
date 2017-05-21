@@ -8,8 +8,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#define SRV_PORT_MIN 4322
-#define SRV_PORT_MAX 5000
+//maxlen for full address
+#define MAX_ADDR_LEN (INET6_ADDRSTRLEN + MAX_SERV_LEN)
 
 void process_request(int sfd);
 void sigchld_handler(int unused);
@@ -24,8 +24,6 @@ int main(void)
 		perror("sigaction");
 		exit(EXIT_FAILURE);
 	}
-
-	unsigned port = SRV_PORT_MIN;
 
 	socklen_t srv_addrlen = 0;
 	int srv_sfd = inet_listen(PORT_SRV, BACKLOG, &srv_addrlen);
@@ -46,27 +44,22 @@ int main(void)
 			continue;
 		}
 
-		char addr_str[INET6_ADDRSTRLEN + 10] = {0};
+		char addr_str[MAX_ADDR_LEN] = {0};
 		inet_addr_str((struct sockaddr *)&client_addr, ca_size,
 		              addr_str, sizeof(addr_str));
-		printf("server: got connection from %s\n", addr_str);
+		printf("\nserver: got connection from %s\n", addr_str);
 
-		char pbuf[MAXDSIZE] = {0};
-		snprintf(pbuf, sizeof(pbuf), "%d", port);
-
+		char sbuf[MAX_SERV_LEN] = {0};
 		socklen_t addrlen = 0;
-		int req_sfd = inet_listen(pbuf, BACKLOG, &addrlen);
-		if (req_sfd < 0) {
-			fprintf(stderr, "could not create req_sfd\n");
-			break;
-		} else {
-			if (send(client_fd, pbuf, sizeof(pbuf), 0) == -1) {
-				perror("send");
-			}
+		int req_sfd = inet_listen("0", BACKLOG, &addrlen);
 
-			port++;
-			if (port > SRV_PORT_MAX)
-				port = SRV_PORT_MIN;
+		if ( req_sfd < 0 ||
+		     socket_service(req_sfd, sbuf, sizeof(sbuf)) < 0 ) {
+			fprintf(stderr, "could not create req_sfd\n");
+			continue;
+		} else {
+			if (send(client_fd, sbuf, sizeof(sbuf), 0) == -1)
+				perror("send");
 		}
 
 		switch(fork()) {
@@ -106,7 +99,7 @@ void process_request(int sfd)
 		return;
 	}
 
-	char addr_str[INET6_ADDRSTRLEN + 10] = {0};
+	char addr_str[MAX_ADDR_LEN] = {0};
 	inet_addr_str((struct sockaddr *)&client_addr, ca_size,
 	              addr_str, sizeof(addr_str));
 	printf("server: process %d got connection from %s\n",

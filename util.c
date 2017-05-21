@@ -113,9 +113,32 @@ char * inet_addr_str(const struct sockaddr *addr, socklen_t addrlen,
 	if (getnameinfo(addr, addrlen, host, NI_MAXHOST,
 	                service, NI_MAXSERV,
 	                NI_NUMERICHOST | NI_NUMERICSERV) == 0)
-		snprintf(addr_str, addr_str_len, "(%s, %s)", host, service);
+		snprintf(addr_str, addr_str_len, "(%s:%s)", host, service);
 	else
 		snprintf(addr_str, addr_str_len, "(?UNKNOWN?)");
 
 	return addr_str;
 }
+
+int socket_service(int sockfd, char *srv, size_t srvlen)
+{
+	struct sockaddr_storage ss;
+	socklen_t len = sizeof(ss);
+
+	if (getsockname(sockfd, (struct sockaddr *)&ss, &len))
+		return -1;
+
+	char host[NI_MAXHOST], service[NI_MAXSERV];
+
+	if (getnameinfo((struct sockaddr *)&ss, len, host, NI_MAXHOST,
+	                service, NI_MAXSERV,
+	                NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
+		snprintf(srv, srvlen, "%s", service);
+	} else {
+		snprintf(srv, srvlen, "ERR");
+		return -1;
+	}
+
+	return 0;
+}
+

@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	char pbuf[MAXDSIZE] = {0};
+	char pbuf[MAX_SERV_LEN] = {0};
 	int numbytes = recv(sockfd, pbuf, sizeof(pbuf), 0);
 	if (numbytes < 0 ) {
 		perror("recv");
